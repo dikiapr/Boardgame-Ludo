@@ -6,11 +6,12 @@ import { gameApi } from "@/services/api";
 import {
   GameStateResponse,
   MovablePieceResponse,
+  MovePieceResponse,
 } from "@/types/game";
 import Dice from "@/components/Dice";
 import MovablePiecesList from "@/components/MovablePiecesList";
 import GameLog from "@/components/GameLog";
-import LudoBoard from "@/components/LudoBoard";
+import LudoBoard, { buildMovePath, AnimatingPiece } from "@/components/LudoBoard";
 
 type Phase = "waiting" | "rolling" | "rolled" | "choosing" | "moving" | "bot-turn" | "game-over";
 
@@ -34,7 +35,9 @@ export default function GamePage() {
   const [selectedPieceId, setSelectedPieceId] = useState<number | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [animatingPiece, setAnimatingPiece] = useState<AnimatingPiece | null>(null);
   const botTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addLog = useCallback((msg: string) => {
     setLog((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
@@ -64,8 +67,34 @@ export default function GamePage() {
     loadGame();
     return () => {
       if (botTimerRef.current) clearTimeout(botTimerRef.current);
+      if (animTimerRef.current) clearTimeout(animTimerRef.current);
     };
   }, [loadGame]);
+
+  // Animate a piece along a path, then call onDone
+  const animatePath = useCallback(
+    (color: string, id: number, path: [number, number][], onDone: () => void) => {
+      if (path.length <= 1) {
+        onDone();
+        return;
+      }
+      let stepIdx = 0;
+      setAnimatingPiece({ color, id, currentPos: path[0] });
+
+      const tick = () => {
+        stepIdx++;
+        if (stepIdx >= path.length) {
+          setAnimatingPiece(null);
+          onDone();
+          return;
+        }
+        setAnimatingPiece({ color, id, currentPos: path[stepIdx] });
+        animTimerRef.current = setTimeout(tick, 150);
+      };
+      animTimerRef.current = setTimeout(tick, 150);
+    },
+    [],
+  );
 
   // Auto bot turn
   useEffect(() => {
@@ -73,6 +102,10 @@ export default function GamePage() {
 
     botTimerRef.current = setTimeout(async () => {
       try {
+        // Capture old piece states before bot moves
+        const botColor = gameState.currentPlayer.color;
+        const oldPieces = gameState.pieces[botColor] ?? [];
+
         const result = await gameApi.botMove(gameId);
         addLog(result.result);
 
@@ -84,7 +117,20 @@ export default function GamePage() {
           addLog(`🏆 ${result.winnerName} menang!`);
         }
 
-        await loadGame();
+        // Animate the bot's moved piece
+        const movedPiece = result.piece;
+        const oldInfo = oldPieces.find((p) => p.id === movedPiece.id);
+        const oldStep = oldInfo?.currentStep ?? 0;
+        const oldState = oldInfo?.state ?? "Base";
+        const path = buildMovePath(botColor, movedPiece.id, oldStep, movedPiece.currentStep, oldState, movedPiece.state);
+
+        if (path.length > 1) {
+          animatePath(botColor, movedPiece.id, path, () => {
+            loadGame();
+          });
+        } else {
+          await loadGame();
+        }
       } catch {
         addLog("Bot gagal bergerak.");
         await loadGame();
@@ -129,13 +175,20 @@ export default function GamePage() {
     }
   };
 
-  const handleMovePiece = async () => {
-    if (selectedPieceId === null) return;
+  const handleMovePiece = async (directPieceId?: number) => {
+    const pieceId = directPieceId ?? selectedPieceId;
+    if (pieceId === null) return;
     setPhase("moving");
     setError("");
 
+    // Find the piece's current state before the move
+    const movableInfo = movablePieces.find((p) => p.pieceId === pieceId);
+    const color = gameState?.currentPlayer.color ?? "";
+    const oldStep = movableInfo?.currentStep ?? 0;
+    const oldState = movableInfo?.currentState ?? "Base";
+
     try {
-      const result = await gameApi.movePiece(gameId, { pieceId: selectedPieceId });
+      const result = await gameApi.movePiece(gameId, { pieceId });
       addLog(result.result);
 
       if (result.pieceCaptured && result.capturedPieceInfo) {
@@ -146,10 +199,22 @@ export default function GamePage() {
         addLog(`🏆 ${result.winnerName} menang!`);
       }
 
+      // Build path and animate
+      const newStep = result.piece.currentStep;
+      const newState = result.piece.state;
+      const path = buildMovePath(color, pieceId, oldStep, newStep, oldState, newState);
+
       setMovablePieces([]);
       setSelectedPieceId(null);
       setDiceValue(null);
-      await loadGame();
+
+      if (path.length > 1) {
+        animatePath(color, pieceId, path, () => {
+          loadGame();
+        });
+      } else {
+        await loadGame();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal menggerakkan pion.");
       setPhase("choosing");
@@ -228,8 +293,9 @@ export default function GamePage() {
               selectedPieceId={selectedPieceId}
               currentPlayerColor={gameState.currentPlayer.color}
               onPieceSelect={(id) => {
-                if (phase === "choosing") setSelectedPieceId(id);
+                if (phase === "choosing") handleMovePiece(id);
               }}
+              animatingPiece={animatingPiece}
             />
           </div>
         </div>
@@ -305,7 +371,7 @@ export default function GamePage() {
               pieces={movablePieces}
               selectedPieceId={selectedPieceId}
               onSelect={setSelectedPieceId}
-              onConfirm={handleMovePiece}
+              onConfirm={() => handleMovePiece()}
             />
           )}
 

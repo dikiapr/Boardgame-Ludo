@@ -46,31 +46,81 @@ const PIECE_BORDER_COLORS: Record<string, string> = {
 };
 
 // ===== SVG COORDINATE MAPPING =====
-// SVG viewBox: 0 0 1000 1000, grid origin (33.617, 34.494), cell size 62.088
-function cellToPercent(row: number, col: number): { left: string; top: string } {
-  const x = (33.617 + col * 62.088 + 31.044) / 10;
-  const y = (34.494 + row * 62.088 + 31.044) / 10;
-  return { left: `${x}%`, top: `${y}%` };
+function cellToPercent(row: number, col: number): { left: number; top: number } {
+  const left = (33.617 + col * 62.088 + 31.044) / 10;
+  const top = (34.494 + row * 62.088 + 31.044) / 10;
+  return { left, top };
 }
 
 // ===== POSITION CALCULATION =====
-function getPiecePosition(piece: PieceResponse): [number, number] | null {
-  if (piece.state === "Base") {
-    const spots = BASE_SPOTS[piece.color];
-    return spots ? spots[piece.id - 1] : null;
+function getGridPosition(color: string, step: number, pieceId: number, state: string): [number, number] | null {
+  if (state === "Base") {
+    const spots = BASE_SPOTS[color];
+    return spots ? spots[pieceId - 1] : null;
   }
-  if (piece.state === "Finished") {
-    const hs = HOME_STRETCH[piece.color];
+  if (state === "Finished") {
+    const hs = HOME_STRETCH[color];
     return hs ? hs[5] : null;
   }
-  const step = piece.currentStep;
   if (step >= 52) {
-    const hs = HOME_STRETCH[piece.color];
+    const hs = HOME_STRETCH[color];
     return hs ? hs[step - 52] : null;
   }
-  const offset = START_OFFSETS[piece.color] ?? 0;
+  const offset = START_OFFSETS[color] ?? 0;
   const globalPos = (offset + step - 1) % 52;
   return TRACK[globalPos] ?? null;
+}
+
+function getPiecePosition(piece: PieceResponse): [number, number] | null {
+  return getGridPosition(piece.color, piece.currentStep, piece.id, piece.state);
+}
+
+// ===== BUILD ANIMATION PATH =====
+// Returns array of [row,col] for each step from oldStep to newStep
+export function buildMovePath(
+  color: string,
+  pieceId: number,
+  oldStep: number,
+  newStep: number,
+  oldState: string,
+  newState: string,
+): [number, number][] {
+  const path: [number, number][] = [];
+
+  // From base → step 1 (entering board)
+  if (oldState === "Base") {
+    const basePos = getGridPosition(color, 0, pieceId, "Base");
+    if (basePos) path.push(basePos);
+    for (let s = 1; s <= newStep; s++) {
+      const pos = getGridPosition(color, s, pieceId, "Active");
+      if (pos) path.push(pos);
+    }
+    return path;
+  }
+
+  // Normal movement along track / home stretch
+  const start = Math.min(oldStep, newStep);
+  const end = Math.max(oldStep, newStep);
+  for (let s = start; s <= end; s++) {
+    const st = s >= 57 ? "Finished" : "Active";
+    const pos = getGridPosition(color, s, pieceId, st);
+    if (pos) path.push(pos);
+  }
+
+  // If finishing, add finish position
+  if (newState === "Finished" && newStep >= 57) {
+    const pos = getGridPosition(color, newStep, pieceId, "Finished");
+    if (pos) path.push(pos);
+  }
+
+  return path;
+}
+
+// ===== ANIMATION STATE TYPE =====
+export interface AnimatingPiece {
+  color: string;
+  id: number;
+  currentPos: [number, number];
 }
 
 // ===== STACK OFFSETS for multiple pieces on same cell =====
@@ -88,6 +138,7 @@ interface LudoBoardProps {
   selectedPieceId: number | null;
   currentPlayerColor: string;
   onPieceSelect: (pieceId: number) => void;
+  animatingPiece?: AnimatingPiece | null;
 }
 
 export default function LudoBoard({
@@ -96,11 +147,15 @@ export default function LudoBoard({
   selectedPieceId,
   currentPlayerColor,
   onPieceSelect,
+  animatingPiece,
 }: LudoBoardProps) {
-  // Group pieces by grid position
+  // Group pieces by grid position, skip the animating piece (rendered separately)
   const piecesByPos = new Map<string, PieceResponse[]>();
   for (const colorPieces of Object.values(pieces)) {
     for (const piece of colorPieces) {
+      if (animatingPiece && piece.color === animatingPiece.color && piece.id === animatingPiece.id) {
+        continue; // skip — rendered at animated position
+      }
       const pos = getPiecePosition(piece);
       if (!pos) continue;
       const key = `${pos[0]}-${pos[1]}`;
@@ -121,7 +176,7 @@ export default function LudoBoard({
           draggable={false}
         />
 
-        {/* Piece Overlays */}
+        {/* Static Piece Overlays */}
         {Array.from(piecesByPos.entries()).flatMap(([posKey, piecesHere]) => {
           const [row, col] = posKey.split("-").map(Number);
           const { left, top } = cellToPercent(row, col);
@@ -144,14 +199,13 @@ export default function LudoBoard({
                 className={`
                   absolute rounded-full flex items-center justify-center
                   text-white font-bold shadow-md
-                  transition-all duration-200
                   ${isMovable && !isSelected ? "animate-pulse cursor-pointer ring-2 ring-white z-10" : ""}
                   ${isSelected ? "ring-2 ring-yellow-300 scale-125 z-20 cursor-pointer" : ""}
                   ${!isMovable ? "cursor-default" : ""}
                 `}
                 style={{
-                  left: `calc(${left} + ${offset.dx}%)`,
-                  top: `calc(${top} + ${offset.dy}%)`,
+                  left: `calc(${left}% + ${offset.dx}%)`,
+                  top: `calc(${top}% + ${offset.dy}%)`,
                   transform: "translate(-50%, -50%)",
                   width: size,
                   height: size,
@@ -166,6 +220,30 @@ export default function LudoBoard({
             );
           });
         })}
+
+        {/* Animating Piece */}
+        {animatingPiece && (() => {
+          const { left, top } = cellToPercent(animatingPiece.currentPos[0], animatingPiece.currentPos[1]);
+          return (
+            <div
+              className="absolute rounded-full flex items-center justify-center text-white font-bold shadow-lg z-30 ring-2 ring-white"
+              style={{
+                left: `${left}%`,
+                top: `${top}%`,
+                transform: "translate(-50%, -50%)",
+                width: "4.8%",
+                height: "4.8%",
+                backgroundColor: PIECE_COLORS[animatingPiece.color],
+                borderWidth: "2px",
+                borderColor: PIECE_BORDER_COLORS[animatingPiece.color],
+                fontSize: "11px",
+                transition: "left 120ms ease-out, top 120ms ease-out",
+              }}
+            >
+              {animatingPiece.id}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
