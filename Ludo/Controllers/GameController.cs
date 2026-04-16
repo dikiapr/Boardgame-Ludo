@@ -8,13 +8,26 @@ public class GameController : IGameController
 {
     private readonly IList<IPlayer> _players;
     private readonly IDictionary<PlayerColor, IList<IPiece>> _pieces;
-    private readonly IDictionary<PlayerColor, IList<Position>> _colorPath;
     private readonly IDice _dice;
     private readonly IBoard _board;
 
     private int _currentRollValue;
     private int _currentPlayerIndex;
     private bool _isGameOver;
+
+    private const int MainTrackSize = 52;
+    private const int TotalSteps = 57;
+    private const int HomeStretchStart = 52;
+    private const int PiecesPerPlayer = 4;
+    private static readonly Random _random = new();
+
+    private static readonly Dictionary<PlayerColor, int> StartOffsets = new()
+    {
+        { PlayerColor.Red, 0 },
+        { PlayerColor.Blue, 13 },
+        { PlayerColor.Green, 26 },
+        { PlayerColor.Yellow, 39 }
+    };
 
     public bool IsGameOver => _isGameOver;
     public int CurrentPlayerIndex => _currentPlayerIndex;
@@ -28,127 +41,171 @@ public class GameController : IGameController
         _board = board;
         _players = new List<IPlayer>();
         _pieces = new Dictionary<PlayerColor, IList<IPiece>>();
-        _colorPath = new Dictionary<PlayerColor, IList<Position>>();
         _currentPlayerIndex = 0;
         _isGameOver = false;
         _currentRollValue = 0;
+
+        var colors = Enum.GetValues<PlayerColor>();
+        for (int i = 0; i < playerNames.Count && i < colors.Length; i++)
+        {
+            var color = colors[i];
+            _players.Add(new Player(playerNames[i], color));
+
+            var pieces = new List<IPiece>();
+            for (int j = 0; j < PiecesPerPlayer; j++)
+            {
+                pieces.Add(new Piece(j + 1, color));
+            }
+            _pieces[color] = pieces;
+        }
     }
 
     public IBoard GetBoard() => _board;
-
     public IDice GetDice() => _dice;
+    public IPlayer GetCurrentPlayer() => _players[_currentPlayerIndex];
+    public IList<IPlayer> GetPlayers() => _players;
+    public IDictionary<PlayerColor, IList<IPiece>> GetAllPieces() => _pieces;
 
     public void StartGame()
     {
-        // TODO: inisialisasi papan, posisi awal tiap pion, dan mulai giliran pertama
+        _currentPlayerIndex = 0;
+        _isGameOver = false;
     }
 
     public int RollDice()
     {
-        // TODO: lempar dadu, simpan hasilnya ke _currentRollValue, kembalikan nilainya
-        return 0;
+        _currentRollValue = _random.Next(1, 7);
+        _dice.Value = _currentRollValue;
+        return _currentRollValue;
     }
 
-    private IList<IPiece> GetMovablePieces(int steps)
+    public IList<IPiece> GetMovablePieces()
     {
-        // TODO: cari semua pion milik pemain saat ini yang bisa bergerak sejumlah 'steps'
-        return new List<IPiece>();
+        var player = _players[_currentPlayerIndex];
+        var pieces = _pieces[player.Color];
+        return pieces.Where(p => CanMove(p, _currentRollValue)).ToList();
     }
 
     private bool CanMove(IPiece piece, int steps)
     {
-        // TODO: periksa apakah pion bisa bergerak sejumlah 'steps'
-        return false;
-    }
-
-    private void HandleMoveLogic(IList<IPiece> movables)
-    {
-        // TODO: tangani alur pemilihan dan pergerakan pion
+        if (piece.State == PieceState.Finished) return false;
+        if (piece.State == PieceState.Base) return steps == 6;
+        return piece.CurrentStep + steps <= TotalSteps;
     }
 
     public IPiece ChoosePiece(IList<IPiece> movablePieces)
     {
-        // TODO: minta pemain memilih pion dari daftar pion yang bisa bergerak
         return movablePieces[0];
     }
 
     public void MovePiece(IPlayer player, IPiece piece, int steps)
     {
-        // TODO: pindahkan pion sesuai jumlah langkah, perbarui posisi dan state
-    }
+        if (piece.State == PieceState.Base && steps == 6)
+        {
+            EnterBoard(piece);
+            return;
+        }
 
-    private Position GetPositionFromPath(PlayerColor color, int step)
-    {
-        // TODO: kembalikan posisi di papan berdasarkan jalur warna dan langkah ke-n
-        return new Position();
-    }
+        if (piece.State == PieceState.Active)
+        {
+            piece.CurrentStep += steps;
 
-    public ITile GetTileFromBoard(Position targetPos)
-    {
-        // TODO: ambil tile dari papan berdasarkan posisi
-        return _board.Grid[targetPos.X][targetPos.Y];
+            if (piece.CurrentStep >= TotalSteps)
+            {
+                HandleFinish(piece);
+                return;
+            }
+
+            if (piece.CurrentStep >= 1 && piece.CurrentStep <= 51)
+            {
+                CheckAndCapture(piece);
+            }
+        }
     }
 
     private void EnterBoard(IPiece piece)
     {
-        // TODO: keluarkan pion dari base ke posisi awal di papan
+        piece.State = PieceState.Active;
+        piece.CurrentStep = 1;
+        CheckAndCapture(piece);
     }
 
-    private void AddPieceToTile(ITile tile, IPiece piece)
+    private void CheckAndCapture(IPiece piece)
     {
-        // TODO: tambahkan pion ke daftar pion di tile tujuan
+        int globalPos = GetGlobalTrackPosition(piece.Color, piece.CurrentStep);
+        if (globalPos < 0) return;
+        if (IsSafeTile(globalPos)) return;
+
+        foreach (var kvp in _pieces)
+        {
+            if (kvp.Key == piece.Color) continue;
+
+            foreach (var enemyPiece in kvp.Value)
+            {
+                if (enemyPiece.State != PieceState.Active) continue;
+                if (enemyPiece.CurrentStep < 1 || enemyPiece.CurrentStep > 51) continue;
+
+                int enemyGlobalPos = GetGlobalTrackPosition(enemyPiece.Color, enemyPiece.CurrentStep);
+                if (enemyGlobalPos == globalPos)
+                {
+                    ReturnToBase(enemyPiece);
+                    OnPieceCaptured?.Invoke(piece, enemyPiece);
+                }
+            }
+        }
     }
 
-    private void HandleEnter(IPiece piece)
+    private bool IsSafeTile(int globalPosition)
     {
-        // TODO: tangani logika saat pion pertama kali masuk ke papan (misalnya cek musuh)
+        return StartOffsets.ContainsValue(globalPosition);
     }
 
-    private void RemovePieceFromTile(ITile tile, IPiece piece)
+    private int GetGlobalTrackPosition(PlayerColor color, int step)
     {
-        // TODO: hapus pion dari tile yang ditinggalkan
-    }
-
-    private bool HasEnemyPiece(IPiece piece)
-    {
-        // TODO: cek apakah tile tujuan mengandung pion milik pemain lain
-        return false;
+        if (step < 1 || step > 51) return -1;
+        return (StartOffsets[color] + step - 1) % MainTrackSize;
     }
 
     private void ReturnToBase(IPiece piece)
     {
-        // TODO: kembalikan pion musuh ke base, set state-nya ke Base
-    }
-
-    public void NextTurn()
-    {
-        // TODO: pindah ke giliran pemain berikutnya, perbarui _currentPlayerIndex
+        piece.State = PieceState.Base;
+        piece.CurrentStep = 0;
     }
 
     private void HandleFinish(IPiece piece)
     {
-        // TODO: tangani saat pion mencapai finish
-    }
+        piece.State = PieceState.Finished;
+        piece.CurrentStep = TotalSteps;
+        _board.FinishedPieces.Add(piece);
 
-    private bool IsPieceAtFinish(IPiece piece)
-    {
-        // TODO: cek apakah pion sudah berada di posisi finish
-        return false;
-    }
-
-    private void AddToFinished(IPiece piece)
-    {
-        // TODO: pindahkan pion ke daftar FinishedPieces di board, set state-nya ke Finished
+        var player = _players[_currentPlayerIndex];
+        if (CheckWinner(player))
+        {
+            EndGame();
+        }
     }
 
     private bool CheckWinner(IPlayer player)
     {
-        // TODO: cek apakah semua pion milik player sudah Finished
-        return false;
+        return _pieces[player.Color].All(p => p.State == PieceState.Finished);
+    }
+
+    public ITile GetTileFromBoard(Position targetPos)
+    {
+        return _board.Grid[targetPos.X][targetPos.Y];
+    }
+
+    public void NextTurn()
+    {
+        if (_currentRollValue != 6)
+        {
+            _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
+        }
     }
 
     public void EndGame()
     {
-        // TODO: tandai game selesai, naikkan event OnGameFinished
+        _isGameOver = true;
+        OnGameFinished?.Invoke();
     }
 }

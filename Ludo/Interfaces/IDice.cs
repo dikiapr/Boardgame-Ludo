@@ -2,5 +2,5 @@ namespace Ludo.Interfaces;
 
 public interface IDice
 {
-    int Value { get; }
+    int Value { get; set; }
 }

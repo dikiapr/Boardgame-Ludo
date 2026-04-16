@@ -5,6 +5,7 @@ namespace Ludo.Interfaces;
 
 public interface IPiece
 {
+    int Id { get; }
     PlayerColor Color { get; }
     Position CurrentPosition { get; set; }
     int CurrentStep { get; set; }
