@@ -35,7 +35,7 @@ public class GameController : IGameController
     public event Action<IPiece, IPiece>? OnPieceCaptured;
     public event Action? OnGameFinished;
 
-    public GameController(IDice dice, IBoard board, IList<string> playerNames)
+    public GameController(IDice dice, IBoard board, IList<string> playerNames, IList<bool>? isBotList = null)
     {
         _dice = dice;
         _board = board;
@@ -49,7 +49,8 @@ public class GameController : IGameController
         for (int i = 0; i < playerNames.Count && i < colors.Length; i++)
         {
             var color = colors[i];
-            _players.Add(new Player(playerNames[i], color));
+            bool isBot = isBotList != null && i < isBotList.Count && isBotList[i];
+            _players.Add(new Player(playerNames[i], color, isBot));
 
             var pieces = new List<IPiece>();
             for (int j = 0; j < PiecesPerPlayer; j++)
@@ -96,6 +97,47 @@ public class GameController : IGameController
     public IPiece ChoosePiece(IList<IPiece> movablePieces)
     {
         return movablePieces[0];
+    }
+
+    public IPiece BotChoosePiece(IList<IPiece> movablePieces)
+    {
+        // Prioritas: 1) Capture musuh, 2) Keluar dari base, 3) Pion paling depan
+        var player = _players[_currentPlayerIndex];
+
+        // Cek apakah ada pion yang bisa capture musuh
+        foreach (var piece in movablePieces)
+        {
+            int futureStep = piece.State == PieceState.Base ? 1 : piece.CurrentStep + _currentRollValue;
+            if (futureStep >= 1 && futureStep <= 51)
+            {
+                int globalPos = GetGlobalTrackPosition(player.Color, futureStep);
+                if (globalPos >= 0 && !IsSafeTile(globalPos) && HasEnemyAtGlobal(player.Color, globalPos))
+                    return piece;
+            }
+        }
+
+        // Keluarkan pion dari base jika bisa
+        var basePiece = movablePieces.FirstOrDefault(p => p.State == PieceState.Base);
+        if (basePiece != null) return basePiece;
+
+        // Pilih pion yang paling dekat finish
+        return movablePieces.OrderByDescending(p => p.CurrentStep).First();
+    }
+
+    private bool HasEnemyAtGlobal(PlayerColor myColor, int globalPos)
+    {
+        foreach (var kvp in _pieces)
+        {
+            if (kvp.Key == myColor) continue;
+            foreach (var enemy in kvp.Value)
+            {
+                if (enemy.State != PieceState.Active || enemy.CurrentStep < 1 || enemy.CurrentStep > 51)
+                    continue;
+                if (GetGlobalTrackPosition(enemy.Color, enemy.CurrentStep) == globalPos)
+                    return true;
+            }
+        }
+        return false;
     }
 
     public void MovePiece(IPlayer player, IPiece piece, int steps)

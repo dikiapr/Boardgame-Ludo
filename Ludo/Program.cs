@@ -10,26 +10,92 @@ Console.WriteLine("           LUDO GAME                 ");
 Console.WriteLine("=====================================");
 Console.WriteLine();
 
-// --- Setup Players ---
-int playerCount = 0;
-while (playerCount < 2 || playerCount > 4)
+// --- Game Mode ---
+Console.WriteLine("  Mode permainan:");
+Console.WriteLine("    [1] Player vs Player");
+Console.WriteLine("    [2] Player vs Bot");
+Console.WriteLine();
+
+int mode = 0;
+while (mode != 1 && mode != 2)
 {
-    Console.Write("Jumlah pemain (2-4): ");
-    if (!int.TryParse(Console.ReadLine(), out playerCount) || playerCount < 2 || playerCount > 4)
+    Console.Write("  Pilih mode (1/2): ");
+    if (!int.TryParse(Console.ReadLine(), out mode) || (mode != 1 && mode != 2))
     {
-        Console.WriteLine("Masukkan angka antara 2 dan 4.");
-        playerCount = 0;
+        Console.WriteLine("  Masukkan 1 atau 2.");
+        mode = 0;
     }
 }
+Console.WriteLine();
 
 var playerNames = new List<string>();
+var isBotList = new List<bool>();
 var colors = Enum.GetValues<PlayerColor>();
-for (int i = 0; i < playerCount; i++)
+
+if (mode == 1)
 {
-    Console.Write($"Nama pemain {i + 1} ({colors[i]}): ");
-    var name = Console.ReadLine()?.Trim();
-    if (string.IsNullOrEmpty(name)) name = $"Player {i + 1}";
-    playerNames.Add(name);
+    // --- PvP Setup ---
+    int playerCount = 0;
+    while (playerCount < 2 || playerCount > 4)
+    {
+        Console.Write("Jumlah pemain (2-4): ");
+        if (!int.TryParse(Console.ReadLine(), out playerCount) || playerCount < 2 || playerCount > 4)
+        {
+            Console.WriteLine("Masukkan angka antara 2 dan 4.");
+            playerCount = 0;
+        }
+    }
+
+    for (int i = 0; i < playerCount; i++)
+    {
+        Console.Write($"Nama pemain {i + 1} ({colors[i]}): ");
+        var name = Console.ReadLine()?.Trim();
+        if (string.IsNullOrEmpty(name)) name = $"Player {i + 1}";
+        playerNames.Add(name);
+        isBotList.Add(false);
+    }
+}
+else
+{
+    // --- PvB Setup ---
+    int totalPlayers = 0;
+    while (totalPlayers < 2 || totalPlayers > 4)
+    {
+        Console.Write("Total pemain termasuk bot (2-4): ");
+        if (!int.TryParse(Console.ReadLine(), out totalPlayers) || totalPlayers < 2 || totalPlayers > 4)
+        {
+            Console.WriteLine("Masukkan angka antara 2 dan 4.");
+            totalPlayers = 0;
+        }
+    }
+
+    int humanCount = 0;
+    while (humanCount < 1 || humanCount >= totalPlayers)
+    {
+        Console.Write($"Jumlah pemain manusia (1-{totalPlayers - 1}): ");
+        if (!int.TryParse(Console.ReadLine(), out humanCount) || humanCount < 1 || humanCount >= totalPlayers)
+        {
+            Console.WriteLine($"Masukkan angka antara 1 dan {totalPlayers - 1}.");
+            humanCount = 0;
+        }
+    }
+
+    for (int i = 0; i < humanCount; i++)
+    {
+        Console.Write($"Nama pemain {i + 1} ({colors[i]}): ");
+        var name = Console.ReadLine()?.Trim();
+        if (string.IsNullOrEmpty(name)) name = $"Player {i + 1}";
+        playerNames.Add(name);
+        isBotList.Add(false);
+    }
+
+    for (int i = humanCount; i < totalPlayers; i++)
+    {
+        var botName = $"Bot {i - humanCount + 1}";
+        playerNames.Add(botName);
+        isBotList.Add(true);
+        Console.WriteLine($"  {botName} ({colors[i]}) bergabung!");
+    }
 }
 
 Console.WriteLine();
@@ -37,7 +103,7 @@ Console.WriteLine();
 // --- Initialize Game ---
 var dice = new Dice();
 var board = new Board(15, 15);
-var controller = new GameController(dice, board, playerNames);
+var controller = new GameController(dice, board, playerNames, isBotList);
 
 controller.OnPieceCaptured += (attacker, captured) =>
 {
@@ -60,17 +126,26 @@ while (!controller.IsGameOver)
 {
     var currentPlayer = controller.GetCurrentPlayer();
     var allPieces = controller.GetAllPieces();
+    bool isBot = currentPlayer.IsBot;
 
     Console.WriteLine("-------------------------------------");
     DisplayAllPieces(controller.GetPlayers(), allPieces);
     Console.WriteLine();
 
     Console.ForegroundColor = GetConsoleColor(currentPlayer.Color);
-    Console.WriteLine($"  Giliran: {currentPlayer.Name} ({currentPlayer.Color})");
+    string tag = isBot ? " [BOT]" : "";
+    Console.WriteLine($"  Giliran: {currentPlayer.Name} ({currentPlayer.Color}){tag}");
     Console.ResetColor();
 
-    Console.Write("  Tekan Enter untuk lempar dadu...");
-    Console.ReadLine();
+    if (!isBot)
+    {
+        Console.Write("  Tekan Enter untuk lempar dadu...");
+        Console.ReadLine();
+    }
+    else
+    {
+        Console.WriteLine("  Bot melempar dadu...");
+    }
 
     int roll = controller.RollDice();
     Console.Write("  Dadu: ");
@@ -109,7 +184,14 @@ while (!controller.IsGameOver)
 
     // Choose piece
     IPiece chosen;
-    if (movablePieces.Count == 1)
+    if (isBot)
+    {
+        chosen = controller.BotChoosePiece(movablePieces);
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine($"  Bot memilih Pion {chosen.Id}");
+        Console.ResetColor();
+    }
+    else if (movablePieces.Count == 1)
     {
         chosen = movablePieces[0];
         Console.WriteLine($"  Otomatis memilih Pion {chosen.Id}");
@@ -177,7 +259,8 @@ static void DisplayAllPieces(IList<IPlayer> players, IDictionary<PlayerColor, IL
     foreach (var player in players)
     {
         Console.ForegroundColor = GetConsoleColor(player.Color);
-        Console.Write($"  {player.Name,-12} ({player.Color,-6}): ");
+        string botTag = player.IsBot ? " *" : "";
+        Console.Write($"  {player.Name,-12} ({player.Color,-6}){botTag}: ");
         Console.ResetColor();
 
         var pcs = allPieces[player.Color];
