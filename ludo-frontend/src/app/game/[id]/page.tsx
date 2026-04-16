@@ -8,11 +8,18 @@ import {
   MovablePieceResponse,
 } from "@/types/game";
 import Dice from "@/components/Dice";
-import PlayerPanel from "@/components/PlayerPanel";
 import MovablePiecesList from "@/components/MovablePiecesList";
 import GameLog from "@/components/GameLog";
+import LudoBoard from "@/components/LudoBoard";
 
 type Phase = "waiting" | "rolling" | "rolled" | "choosing" | "moving" | "bot-turn" | "game-over";
+
+const borderColor: Record<string, string> = {
+  Red: "border-red-500", Blue: "border-blue-500", Green: "border-green-500", Yellow: "border-yellow-400",
+};
+const bgColor: Record<string, string> = {
+  Red: "bg-red-500/10", Blue: "bg-blue-500/10", Green: "bg-green-500/10", Yellow: "bg-yellow-400/10",
+};
 
 export default function GamePage() {
   const params = useParams();
@@ -33,7 +40,6 @@ export default function GamePage() {
     setLog((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
   }, []);
 
-  // Load game state
   const loadGame = useCallback(async () => {
     try {
       const state = await gameApi.getGameState(gameId);
@@ -83,7 +89,7 @@ export default function GamePage() {
         addLog("Bot gagal bergerak.");
         await loadGame();
       }
-    }, 1200);
+    }, 1500);
 
     return () => {
       if (botTimerRef.current) clearTimeout(botTimerRef.current);
@@ -111,7 +117,6 @@ export default function GamePage() {
         setPhase("rolled");
         setTimeout(() => loadGame(), 1000);
       } else if (result.movablePieces.length === 1) {
-        // Auto select single piece
         setSelectedPieceId(result.movablePieces[0].pieceId);
         setPhase("choosing");
       } else {
@@ -177,13 +182,13 @@ export default function GamePage() {
   const canRoll = isHumanTurn && phase === "waiting";
 
   return (
-    <main className="min-h-screen p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <main className="min-h-screen p-4 md:p-6">
+      <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">🎲 Ludo Game</h1>
-            <p className="text-xs text-gray-500">Game ID: {gameId}</p>
+            <p className="text-xs text-gray-500">ID: {gameId}</p>
           </div>
           <button
             onClick={() => router.push("/")}
@@ -209,46 +214,75 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Player Panels */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {gameState.players.map((player, i) => (
-                <PlayerPanel
-                  key={i}
-                  player={player}
-                  pieces={gameState.pieces[player.color] || []}
-                  isCurrentTurn={i === gameState.currentPlayerIndex && !gameState.isGameOver}
-                  movablePieceIds={
-                    i === gameState.currentPlayerIndex && phase === "choosing"
-                      ? movablePieces.map((p) => p.pieceId)
-                      : []
-                  }
-                  selectedPieceId={
-                    i === gameState.currentPlayerIndex ? selectedPieceId : null
-                  }
-                  onPieceSelect={(id) => {
-                    if (phase === "choosing") setSelectedPieceId(id);
-                  }}
-                />
-              ))}
-            </div>
+        {/* Main Content: Board + Controls */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-6">
+          {/* Left Column: Board + Player Info */}
+          <div className="space-y-4">
+            <LudoBoard
+              pieces={gameState.pieces}
+              movablePieceIds={
+                phase === "choosing"
+                  ? movablePieces.map((p) => p.pieceId)
+                  : []
+              }
+              selectedPieceId={selectedPieceId}
+              currentPlayerColor={gameState.currentPlayer.color}
+              onPieceSelect={(id) => {
+                if (phase === "choosing") setSelectedPieceId(id);
+              }}
+            />
 
-            {/* Game Log */}
-            <GameLog messages={log} />
+            {/* Player Info Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {gameState.players.map((player, i) => {
+                const isCurrent =
+                  i === gameState.currentPlayerIndex && !gameState.isGameOver;
+                const finishedCount =
+                  gameState.pieces[player.color]?.filter(
+                    (p) => p.state === "Finished"
+                  ).length ?? 0;
+
+                return (
+                  <div
+                    key={i}
+                    className={`p-2.5 rounded-lg border-2 text-center transition-all
+                      ${borderColor[player.color]} ${bgColor[player.color]}
+                      ${isCurrent ? "ring-2 ring-yellow-400 ring-offset-1 ring-offset-black" : "opacity-60"}`}
+                  >
+                    <div className="font-semibold text-sm truncate">
+                      {player.name}
+                      {player.isBot && (
+                        <span className="ml-1 text-[10px] bg-gray-700 text-white px-1 rounded">
+                          BOT
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">
+                      {finishedCount}/4 selesai
+                    </div>
+                    {isCurrent && (
+                      <div className="text-[10px] text-yellow-400 font-bold mt-0.5">
+                        ▶ GILIRAN
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Right: Controls */}
+          {/* Right Column: Controls */}
           <div className="space-y-4">
-            {/* Current Turn Info */}
+            {/* Current Turn */}
             {!gameState.isGameOver && (
               <div className="bg-gray-800/50 rounded-xl p-4 text-center">
                 <p className="text-sm text-gray-400 mb-1">Giliran</p>
                 <p className="text-lg font-bold">
                   {gameState.currentPlayer.name}
                   {gameState.currentPlayer.isBot && (
-                    <span className="text-xs ml-2 bg-gray-700 px-2 py-0.5 rounded-full">BOT</span>
+                    <span className="text-xs ml-2 bg-gray-700 px-2 py-0.5 rounded-full">
+                      BOT
+                    </span>
                   )}
                 </p>
               </div>
@@ -279,7 +313,9 @@ export default function GamePage() {
             {/* Bot Turn Indicator */}
             {phase === "bot-turn" && (
               <div className="bg-gray-800/50 rounded-xl p-4 text-center">
-                <p className="text-gray-400 animate-pulse">🤖 Bot sedang berpikir...</p>
+                <p className="text-gray-400 animate-pulse">
+                  🤖 Bot sedang berpikir...
+                </p>
               </div>
             )}
 
@@ -287,6 +323,9 @@ export default function GamePage() {
             {error && (
               <p className="text-red-400 text-sm text-center">{error}</p>
             )}
+
+            {/* Game Log */}
+            <GameLog messages={log} />
           </div>
         </div>
       </div>
