@@ -6,7 +6,7 @@ interface GameLogProps {
 
 export default function GameLog({ messages }: GameLogProps) {
   return (
-    <div className="bg-gray-900 rounded-xl p-4 h-48 overflow-y-auto">
+    <div className="bg-gray-900 rounded-xl p-4 h-full min-h-[120px] max-h-full overflow-y-auto">
       <h3 className="text-sm font-semibold text-gray-400 mb-2">Game Log</h3>
       <div className="space-y-1">
         {messages.length === 0 && (

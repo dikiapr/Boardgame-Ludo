@@ -111,7 +111,7 @@ export default function LudoBoard({
   }
 
   return (
-    <div className="aspect-square w-full max-w-[520px] mx-auto select-none">
+    <div className="w-full h-full select-none">
       <div className="relative w-full h-full">
         {/* SVG Board Background */}
         <img

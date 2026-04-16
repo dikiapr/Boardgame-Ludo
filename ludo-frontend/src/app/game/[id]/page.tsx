@@ -182,42 +182,42 @@ export default function GamePage() {
   const canRoll = isHumanTurn && phase === "waiting";
 
   return (
-    <main className="min-h-screen p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">🎲 Ludo Game</h1>
-            <p className="text-xs text-gray-500">ID: {gameId}</p>
-          </div>
+    <main className="h-screen overflow-hidden flex flex-col p-3">
+      {/* Header */}
+      <div className="flex items-center justify-between shrink-0 mb-2">
+        <div>
+          <h1 className="text-xl font-bold">🎲 Ludo Game</h1>
+          <p className="text-[10px] text-gray-500">ID: {gameId}</p>
+        </div>
+        <button
+          onClick={() => router.push("/")}
+          className="px-3 py-1.5 text-sm bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          ← Menu
+        </button>
+      </div>
+
+      {/* Game Over Banner */}
+      {gameState.isGameOver && gameState.winnerName && (
+        <div className="bg-gradient-to-r from-yellow-600 to-amber-600 rounded-xl p-4 text-center shrink-0 mb-2">
+          <h2 className="text-2xl font-bold text-white mb-1">🏆 Game Over!</h2>
+          <p className="text-lg text-white">
+            Pemenang: <strong>{gameState.winnerName}</strong>
+          </p>
           <button
             onClick={() => router.push("/")}
-            className="px-4 py-2 text-sm bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+            className="mt-2 px-6 py-2 bg-white text-black rounded-lg font-semibold hover:bg-gray-100"
           >
-            ← Menu
+            Main Lagi
           </button>
         </div>
+      )}
 
-        {/* Game Over Banner */}
-        {gameState.isGameOver && gameState.winnerName && (
-          <div className="bg-gradient-to-r from-yellow-600 to-amber-600 rounded-xl p-6 text-center">
-            <h2 className="text-3xl font-bold text-white mb-2">🏆 Game Over!</h2>
-            <p className="text-xl text-white">
-              Pemenang: <strong>{gameState.winnerName}</strong>
-            </p>
-            <button
-              onClick={() => router.push("/")}
-              className="mt-4 px-6 py-2 bg-white text-black rounded-lg font-semibold hover:bg-gray-100"
-            >
-              Main Lagi
-            </button>
-          </div>
-        )}
-
-        {/* Main Content: Board + Controls */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-6">
-          {/* Left Column: Board + Player Info */}
-          <div className="space-y-4">
+      {/* Main Content: Board (left) + Controls (right) — always side-by-side */}
+      <div className="flex-1 min-h-0 flex gap-4">
+        {/* Left: Board */}
+        <div className="shrink-0 h-full flex items-center">
+          <div className="h-full aspect-square">
             <LudoBoard
               pieces={gameState.pieces}
               movablePieceIds={
@@ -231,53 +231,55 @@ export default function GamePage() {
                 if (phase === "choosing") setSelectedPieceId(id);
               }}
             />
+          </div>
+        </div>
 
-            {/* Player Info Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {gameState.players.map((player, i) => {
-                const isCurrent =
-                  i === gameState.currentPlayerIndex && !gameState.isGameOver;
-                const finishedCount =
-                  gameState.pieces[player.color]?.filter(
-                    (p) => p.state === "Finished"
-                  ).length ?? 0;
+        {/* Right: Controls */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-y-auto">
+          {/* Player Info Cards */}
+          <div className="grid grid-cols-2 gap-2 shrink-0">
+            {gameState.players.map((player, i) => {
+              const isCurrent =
+                i === gameState.currentPlayerIndex && !gameState.isGameOver;
+              const finishedCount =
+                gameState.pieces[player.color]?.filter(
+                  (p) => p.state === "Finished"
+                ).length ?? 0;
 
-                return (
-                  <div
-                    key={i}
-                    className={`p-2.5 rounded-lg border-2 text-center transition-all
-                      ${borderColor[player.color]} ${bgColor[player.color]}
-                      ${isCurrent ? "ring-2 ring-yellow-400 ring-offset-1 ring-offset-black" : "opacity-60"}`}
-                  >
-                    <div className="font-semibold text-sm truncate">
-                      {player.name}
-                      {player.isBot && (
-                        <span className="ml-1 text-[10px] bg-gray-700 text-white px-1 rounded">
-                          BOT
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-gray-400 mt-0.5">
-                      {finishedCount}/4 selesai
-                    </div>
-                    {isCurrent && (
-                      <div className="text-[10px] text-yellow-400 font-bold mt-0.5">
-                        ▶ GILIRAN
-                      </div>
+              return (
+                <div
+                  key={i}
+                  className={`p-2 rounded-lg border-2 text-center transition-all
+                    ${borderColor[player.color]} ${bgColor[player.color]}
+                    ${isCurrent ? "ring-2 ring-yellow-400 ring-offset-1 ring-offset-black" : "opacity-60"}`}
+                >
+                  <div className="font-semibold text-sm truncate">
+                    {player.name}
+                    {player.isBot && (
+                      <span className="ml-1 text-[10px] bg-gray-700 text-white px-1 rounded">
+                        BOT
+                      </span>
                     )}
                   </div>
-                );
-              })}
-            </div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">
+                    {finishedCount}/4 selesai
+                  </div>
+                  {isCurrent && (
+                    <div className="text-[10px] text-yellow-400 font-bold mt-0.5">
+                      ▶ GILIRAN
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Right Column: Controls */}
-          <div className="space-y-4">
-            {/* Current Turn */}
-            {!gameState.isGameOver && (
-              <div className="bg-gray-800/50 rounded-xl p-4 text-center">
-                <p className="text-sm text-gray-400 mb-1">Giliran</p>
-                <p className="text-lg font-bold">
+          {/* Current Turn + Dice */}
+          {!gameState.isGameOver && (
+            <div className="shrink-0 space-y-3">
+              <div className="bg-gray-800/50 rounded-xl p-3 text-center">
+                <p className="text-xs text-gray-400">Giliran</p>
+                <p className="text-base font-bold">
                   {gameState.currentPlayer.name}
                   {gameState.currentPlayer.isBot && (
                     <span className="text-xs ml-2 bg-gray-700 px-2 py-0.5 rounded-full">
@@ -286,11 +288,7 @@ export default function GamePage() {
                   )}
                 </p>
               </div>
-            )}
-
-            {/* Dice */}
-            {!gameState.isGameOver && (
-              <div className="bg-gray-800/50 rounded-xl p-6 flex justify-center">
+              <div className="bg-gray-800/50 rounded-xl p-3 flex justify-center">
                 <Dice
                   value={diceValue}
                   rolling={rolling}
@@ -298,33 +296,35 @@ export default function GamePage() {
                   disabled={!canRoll}
                 />
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Movable Pieces Selection */}
-            {phase === "choosing" && movablePieces.length > 0 && (
-              <MovablePiecesList
-                pieces={movablePieces}
-                selectedPieceId={selectedPieceId}
-                onSelect={setSelectedPieceId}
-                onConfirm={handleMovePiece}
-              />
-            )}
+          {/* Movable Pieces Selection */}
+          {phase === "choosing" && movablePieces.length > 0 && (
+            <MovablePiecesList
+              pieces={movablePieces}
+              selectedPieceId={selectedPieceId}
+              onSelect={setSelectedPieceId}
+              onConfirm={handleMovePiece}
+            />
+          )}
 
-            {/* Bot Turn Indicator */}
-            {phase === "bot-turn" && (
-              <div className="bg-gray-800/50 rounded-xl p-4 text-center">
-                <p className="text-gray-400 animate-pulse">
-                  🤖 Bot sedang berpikir...
-                </p>
-              </div>
-            )}
+          {/* Bot Turn Indicator */}
+          {phase === "bot-turn" && (
+            <div className="bg-gray-800/50 rounded-xl p-3 text-center shrink-0">
+              <p className="text-gray-400 animate-pulse">
+                🤖 Bot sedang berpikir...
+              </p>
+            </div>
+          )}
 
-            {/* Error */}
-            {error && (
-              <p className="text-red-400 text-sm text-center">{error}</p>
-            )}
+          {/* Error */}
+          {error && (
+            <p className="text-red-400 text-sm text-center shrink-0">{error}</p>
+          )}
 
-            {/* Game Log */}
+          {/* Game Log - fills remaining space */}
+          <div className="flex-1 min-h-[100px]">
             <GameLog messages={log} />
           </div>
         </div>
