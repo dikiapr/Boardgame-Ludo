@@ -23,10 +23,10 @@ public class GameController : IGameController
 
     private static readonly Dictionary<PlayerColor, int> StartOffsets = new()
     {
-        { PlayerColor.Red, 0 },
-        { PlayerColor.Blue, 13 },
-        { PlayerColor.Green, 26 },
-        { PlayerColor.Yellow, 39 }
+        { PlayerColor.Green, 0 },
+        { PlayerColor.Yellow, 13 },
+        { PlayerColor.Blue, 26 },
+        { PlayerColor.Red, 39 }
     };
 
     public bool IsGameOver => _isGameOver;
