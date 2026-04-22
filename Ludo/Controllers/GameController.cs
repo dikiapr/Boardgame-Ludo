@@ -11,13 +11,11 @@ public class GameController : IGameController
     private readonly IDice _dice;
     private readonly IBoard _board;
 
-    private int _currentRollValue;
     private int _currentPlayerIndex;
     private bool _isGameOver;
 
     private const int MainTrackSize = 52;
     private const int TotalSteps = 57;
-    private const int HomeStretchStart = 52;
     private const int PiecesPerPlayer = 4;
     private static readonly Random _random = new();
 
@@ -43,7 +41,7 @@ public class GameController : IGameController
         _pieces = new Dictionary<PlayerColor, IList<IPiece>>();
         _currentPlayerIndex = 0;
         _isGameOver = false;
-        _currentRollValue = 0;
+        _dice.Value = 0;
 
         var colors = Enum.GetValues<PlayerColor>();
         for (int i = 0; i < playerNames.Count && i < colors.Length; i++)
@@ -75,16 +73,15 @@ public class GameController : IGameController
 
     public int RollDice()
     {
-        _currentRollValue = _random.Next(1, 7);
-        _dice.Value = _currentRollValue;
-        return _currentRollValue;
+        _dice.Value = _random.Next(1, 7);
+        return _dice.Value;
     }
 
     public IList<IPiece> GetMovablePieces()
     {
         var player = _players[_currentPlayerIndex];
         var pieces = _pieces[player.Color];
-        return pieces.Where(p => CanMove(p, _currentRollValue)).ToList();
+        return pieces.Where(p => CanMove(p, _dice.Value)).ToList();
     }
 
     private bool CanMove(IPiece piece, int steps)
@@ -107,7 +104,7 @@ public class GameController : IGameController
         // Cek apakah ada pion yang bisa capture musuh
         foreach (var piece in movablePieces)
         {
-            int futureStep = piece.State == PieceState.Base ? 1 : piece.CurrentStep + _currentRollValue;
+            int futureStep = piece.State == PieceState.Base ? 1 : piece.CurrentStep + _dice.Value;
             if (futureStep >= 1 && futureStep <= 51)
             {
                 int globalPos = GetGlobalTrackPosition(player.Color, futureStep);
@@ -239,7 +236,7 @@ public class GameController : IGameController
 
     public void NextTurn()
     {
-        if (_currentRollValue != 6)
+        if (_dice.Value != 6)
         {
             _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
         }

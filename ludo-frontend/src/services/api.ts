@@ -6,7 +6,7 @@ import {
   MovePieceResponse,
 } from "@/types/game";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5062";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5029";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
@@ -36,7 +36,10 @@ export const gameApi = {
     return request(`/api/game/${gameId}/roll`, { method: "POST" });
   },
 
-  movePiece(gameId: string, data: MovePieceRequest): Promise<MovePieceResponse> {
+  movePiece(
+    gameId: string,
+    data: MovePieceRequest,
+  ): Promise<MovePieceResponse> {
     return request(`/api/game/${gameId}/move`, {
       method: "POST",
       body: JSON.stringify(data),
