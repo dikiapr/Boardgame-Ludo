@@ -3,7 +3,8 @@ using Ludo.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddSingleton<GameSessionManager>();
+builder.Services.AddSingleton<IGameSessionManager, GameSessionManager>();
+builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>

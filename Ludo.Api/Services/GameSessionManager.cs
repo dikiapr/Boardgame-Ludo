@@ -1,26 +1,29 @@
 using System.Collections.Concurrent;
+using Ludo.Api.Models;
 using Ludo.Controllers;
-using Ludo.Enums;
-using Ludo.Interfaces;
 using Ludo.Models;
 
 namespace Ludo.Api.Services;
 
-public class GameSessionManager
+public class GameSessionManager : IGameSessionManager
 {
+    private const int BoardWidth = 15;
+    private const int BoardHeight = 15;
+    private const int GameIdLength = 8;
+
     private readonly ConcurrentDictionary<string, GameSession> _sessions = new();
 
-    public (string gameId, GameSession session) CreateGame(List<string> playerNames, List<bool> isBotList)
+    public GameSession CreateGame(IList<string> playerNames, IList<bool> isBotList)
     {
-        var gameId = Guid.NewGuid().ToString("N")[..8];
+        var gameId = Guid.NewGuid().ToString("N")[..GameIdLength];
         var dice = new Dice();
-        var board = new Board(15, 15);
+        var board = new Board(BoardWidth, BoardHeight);
         var controller = new GameController(dice, board, playerNames, isBotList);
         controller.StartGame();
 
-        var session = new GameSession(controller);
+        var session = new GameSession(gameId, controller);
         _sessions[gameId] = session;
-        return (gameId, session);
+        return session;
     }
 
     public GameSession? GetSession(string gameId)
@@ -32,40 +35,5 @@ public class GameSessionManager
     public bool RemoveSession(string gameId)
     {
         return _sessions.TryRemove(gameId, out _);
-    }
-}
-
-public class GameSession
-{
-    public GameController Controller { get; }
-    public int? LastRoll { get; set; }
-    public IList<IPiece>? LastMovablePieces { get; set; }
-    public bool PieceCapturedThisTurn { get; set; }
-    public string? CapturedPieceInfo { get; set; }
-    public string? WinnerName { get; set; }
-
-    public GameSession(GameController controller)
-    {
-        Controller = controller;
-
-        controller.OnPieceCaptured += (attacker, captured) =>
-        {
-            PieceCapturedThisTurn = true;
-            CapturedPieceInfo = $"{attacker} menangkap {captured}! Kembali ke base!";
-        };
-
-        controller.OnGameFinished += () =>
-        {
-            var players = controller.GetPlayers();
-            var pieces = controller.GetAllPieces();
-            foreach (var player in players)
-            {
-                if (pieces[player.Color].All(p => p.State == PieceState.Finished))
-                {
-                    WinnerName = player.Name;
-                    break;
-                }
-            }
-        };
     }
 }
