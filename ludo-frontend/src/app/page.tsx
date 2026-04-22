@@ -10,11 +10,12 @@ interface PlayerSetup {
 }
 
 const colorLabels = ["Red", "Blue", "Green", "Yellow"];
-const colorClasses = [
-  "border-red-500 bg-red-500/10",
-  "border-blue-500 bg-blue-500/10",
-  "border-green-500 bg-green-500/10",
-  "border-yellow-400 bg-yellow-400/10",
+const colorDots = ["#E55353", "#3B82F6", "#22C55E", "#FFD23F"];
+const colorBorderStyle = [
+  { borderColor: "#E55353", backgroundColor: "#FFF5F5" },
+  { borderColor: "#3B82F6", backgroundColor: "#F0F5FF" },
+  { borderColor: "#22C55E", backgroundColor: "#F0FFF4" },
+  { borderColor: "#FFD23F", backgroundColor: "#FFFBEB" },
 ];
 
 export default function HomePage() {
@@ -81,38 +82,51 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
+    <main
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ backgroundColor: "#EDE8DC" }}
+    >
       <div className="w-full max-w-lg space-y-8">
         <div className="text-center">
-          <h1 className="text-5xl font-bold mb-2">🎲 Ludo Game</h1>
-          <p className="text-gray-400">Pilih mode permainan dan mulai bermain!</p>
+          <h1 className="text-5xl font-extrabold mb-2" style={{ color: "#2C2416" }}>
+            🎲 Ludo Game
+          </h1>
+          <p style={{ color: "#7D766A" }}>Pilih mode permainan dan mulai bermain!</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => selectMode("pvp")}
-            className={`p-6 rounded-xl border-2 transition-all text-center
-              ${mode === "pvp" ? "border-blue-500 bg-blue-500/20" : "border-gray-700 hover:border-gray-500"}`}
+            className="p-6 rounded-2xl border-2 transition-all text-center"
+            style={{
+              borderColor: mode === "pvp" ? "#FF9F1C" : "#DDD8CC",
+              backgroundColor: mode === "pvp" ? "#FFF8EE" : "#F5F0E6",
+              color: "#2C2416",
+            }}
           >
             <div className="text-3xl mb-2">👥</div>
             <div className="font-bold">Player vs Player</div>
-            <div className="text-xs text-gray-400 mt-1">Main bareng teman</div>
+            <div className="text-xs mt-1" style={{ color: "#7D766A" }}>Main bareng teman</div>
           </button>
           <button
             onClick={() => selectMode("pvb")}
-            className={`p-6 rounded-xl border-2 transition-all text-center
-              ${mode === "pvb" ? "border-green-500 bg-green-500/20" : "border-gray-700 hover:border-gray-500"}`}
+            className="p-6 rounded-2xl border-2 transition-all text-center"
+            style={{
+              borderColor: mode === "pvb" ? "#FF9F1C" : "#DDD8CC",
+              backgroundColor: mode === "pvb" ? "#FFF8EE" : "#F5F0E6",
+              color: "#2C2416",
+            }}
           >
             <div className="text-3xl mb-2">🤖</div>
             <div className="font-bold">Player vs Bot</div>
-            <div className="text-xs text-gray-400 mt-1">Lawan komputer</div>
+            <div className="text-xs mt-1" style={{ color: "#7D766A" }}>Lawan komputer</div>
           </button>
         </div>
 
         {mode && (
           <>
             <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+              <label className="block text-sm font-semibold mb-2" style={{ color: "#5C5246" }}>
                 Jumlah Pemain
               </label>
               <div className="flex gap-2">
@@ -120,8 +134,12 @@ export default function HomePage() {
                   <button
                     key={n}
                     onClick={() => updatePlayerCount(n)}
-                    className={`flex-1 py-2 rounded-lg border-2 font-bold transition-all
-                      ${playerCount === n ? "border-white bg-white/10" : "border-gray-700 hover:border-gray-500"}`}
+                    className="flex-1 py-2 rounded-xl border-2 font-bold transition-all"
+                    style={{
+                      borderColor: playerCount === n ? "#FFD23F" : "#DDD8CC",
+                      backgroundColor: playerCount === n ? "#FFD23F" : "#F5F0E6",
+                      color: "#2C2416",
+                    }}
                   >
                     {n}
                   </button>
@@ -133,16 +151,27 @@ export default function HomePage() {
               {players.map((player, i) => (
                 <div
                   key={i}
-                  className={`flex items-center gap-3 p-3 rounded-xl border-2 ${colorClasses[i]}`}
+                  className="flex items-center gap-3 p-3 rounded-xl border-2"
+                  style={colorBorderStyle[i]}
                 >
-                  <span className="text-sm font-bold w-14 text-gray-300">{colorLabels[i]}</span>
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: colorDots[i] }}
+                  />
+                  <span className="text-sm font-bold w-14" style={{ color: "#5C5246" }}>
+                    {colorLabels[i]}
+                  </span>
                   <input
                     type="text"
                     value={player.name}
                     onChange={(e) => updatePlayer(i, "name", e.target.value)}
                     placeholder={player.isBot ? `Bot ${i + 1}` : `Player ${i + 1}`}
-                    className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2
-                               text-sm placeholder-gray-500 focus:outline-none focus:border-gray-400"
+                    className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none border"
+                    style={{
+                      backgroundColor: "#FAF7F2",
+                      borderColor: "#DDD8CC",
+                      color: "#2C2416",
+                    }}
                   />
                   {mode === "pvb" && (
                     <label className="flex items-center gap-1.5 cursor-pointer">
@@ -150,9 +179,10 @@ export default function HomePage() {
                         type="checkbox"
                         checked={player.isBot}
                         onChange={(e) => updatePlayer(i, "isBot", e.target.checked)}
-                        className="w-4 h-4 accent-green-500"
+                        className="w-4 h-4"
+                        style={{ accentColor: "#FF9F1C" }}
                       />
-                      <span className="text-xs text-gray-400">Bot</span>
+                      <span className="text-xs" style={{ color: "#7D766A" }}>Bot</span>
                     </label>
                   )}
                 </div>
@@ -160,15 +190,14 @@ export default function HomePage() {
             </div>
 
             {error && (
-              <p className="text-red-400 text-sm text-center">{error}</p>
+              <p className="text-red-600 text-sm text-center">{error}</p>
             )}
 
             <button
               onClick={handleStart}
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white
-                         rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full py-3 rounded-2xl font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "#FFD23F", color: "#2C2416" }}
             >
               {loading ? "Memulai..." : "Mulai Permainan 🎮"}
             </button>

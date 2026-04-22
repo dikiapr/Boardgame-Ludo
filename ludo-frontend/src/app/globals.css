@@ -1,19 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #EDE8DC;
+  --foreground: #2C2416;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-plus-jakarta);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes diceWobble {
+  0%   { transform: rotate(0deg)   scale(1);    }
+  15%  { transform: rotate(-10deg) scale(1.06); }
+  30%  { transform: rotate(8deg)   scale(0.96); }
+  45%  { transform: rotate(-6deg)  scale(1.04); }
+  60%  { transform: rotate(5deg)   scale(0.98); }
+  75%  { transform: rotate(-3deg)  scale(1.02); }
+  100% { transform: rotate(0deg)   scale(1);    }
+}
+
+.dice-rolling {
+  animation: diceWobble 0.45s ease-in-out infinite;
 }

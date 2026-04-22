@@ -15,11 +15,11 @@ import LudoBoard, { buildMovePath, AnimatingPiece } from "@/components/LudoBoard
 
 type Phase = "waiting" | "rolling" | "rolled" | "choosing" | "moving" | "bot-turn" | "game-over";
 
-const borderColor: Record<string, string> = {
-  Red: "border-red-500", Blue: "border-blue-500", Green: "border-green-500", Yellow: "border-yellow-400",
-};
-const bgColor: Record<string, string> = {
-  Red: "bg-red-500/10", Blue: "bg-blue-500/10", Green: "bg-green-500/10", Yellow: "bg-yellow-400/10",
+const tabIconColor: Record<string, string> = {
+  Red: "#E55353",
+  Blue: "#3B82F6",
+  Green: "#22C55E",
+  Yellow: "#FFD23F",
 };
 
 export default function GamePage() {
@@ -148,7 +148,10 @@ export default function GamePage() {
     setSelectedPieceId(null);
 
     try {
-      const result = await gameApi.rollDice(gameId);
+      const [result] = await Promise.all([
+        gameApi.rollDice(gameId),
+        new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+      ]);
       setDiceValue(result.value);
       setMovablePieces(result.movablePieces);
 
@@ -223,11 +226,12 @@ export default function GamePage() {
 
   if (error && !gameState) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-4">
-        <p className="text-red-400 text-lg">{error}</p>
+      <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-4" style={{ backgroundColor: "#EDE8DC" }}>
+        <p className="text-red-600 text-lg">{error}</p>
         <button
           onClick={() => router.push("/")}
-          className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+          className="px-6 py-2 rounded-xl font-semibold"
+          style={{ backgroundColor: "#F5F0E6", color: "#2C2416" }}
         >
           Kembali ke Menu
         </button>
@@ -237,8 +241,8 @@ export default function GamePage() {
 
   if (!gameState) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-400 text-lg">Memuat game...</p>
+      <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#EDE8DC" }}>
+        <p className="text-lg" style={{ color: "#7D766A" }}>Memuat game...</p>
       </main>
     );
   }
@@ -247,16 +251,17 @@ export default function GamePage() {
   const canRoll = isHumanTurn && phase === "waiting";
 
   return (
-    <main className="h-screen overflow-hidden flex flex-col p-3">
+    <main className="h-screen overflow-hidden flex flex-col p-3" style={{ backgroundColor: "#EDE8DC" }}>
       {/* Header */}
       <div className="flex items-center justify-between shrink-0 mb-2">
         <div>
-          <h1 className="text-xl font-bold">🎲 Ludo Game</h1>
-          <p className="text-[10px] text-gray-500">ID: {gameId}</p>
+          <h1 className="text-xl font-bold" style={{ color: "#2C2416" }}>🎲 Ludo Game</h1>
+          <p className="text-[10px]" style={{ color: "#2C2416" }}>ID: {gameId}</p>
         </div>
         <button
           onClick={() => router.push("/")}
-          className="px-3 py-1.5 text-sm bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+          className="px-3 py-1.5 text-sm rounded-lg transition-colors font-semibold"
+          style={{ backgroundColor: "#F5F0E6", color: "#5C5246" }}
         >
           ← Menu
         </button>
@@ -302,39 +307,36 @@ export default function GamePage() {
 
         {/* Right: Controls */}
         <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-y-auto">
-          {/* Player Info Cards */}
-          <div className="grid grid-cols-2 gap-2 shrink-0">
+          {/* Player Tabs */}
+          <div className="grid grid-cols-4 gap-2 shrink-0">
             {gameState.players.map((player, i) => {
               const isCurrent =
                 i === gameState.currentPlayerIndex && !gameState.isGameOver;
-              const finishedCount =
-                gameState.pieces[player.color]?.filter(
-                  (p) => p.state === "Finished"
-                ).length ?? 0;
-
+              const color = tabIconColor[player.color] ?? "#9ca3af";
               return (
                 <div
                   key={i}
-                  className={`p-2 rounded-lg border-2 text-center transition-all
-                    ${borderColor[player.color]} ${bgColor[player.color]}
-                    ${isCurrent ? "ring-2 ring-yellow-400 ring-offset-1 ring-offset-black" : "opacity-60"}`}
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl transition-all"
+                  style={{
+                    border: isCurrent ? `2px solid ${color}` : "2px solid #DDD8CC",
+                    backgroundColor: isCurrent ? `${color}20` : "#F5F0E6",
+                  }}
                 >
-                  <div className="font-semibold text-sm truncate">
-                    {player.name}
-                    {player.isBot && (
-                      <span className="ml-1 text-[10px] bg-gray-700 text-white px-1 rounded">
-                        BOT
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">
-                    {finishedCount}/4 selesai
-                  </div>
-                  {isCurrent && (
-                    <div className="text-[10px] text-yellow-400 font-bold mt-0.5">
-                      ▶ GILIRAN
-                    </div>
-                  )}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-6 h-6"
+                    style={{ color: isCurrent ? color : "#B5AFA8" }}
+                  >
+                    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                  </svg>
+                  <span
+                    className="text-[11px] font-semibold"
+                    style={{ color: isCurrent ? color : "#A8A099" }}
+                  >
+                    P{i + 1}
+                  </span>
                 </div>
               );
             })}
@@ -342,43 +344,44 @@ export default function GamePage() {
 
           {/* Current Turn + Dice */}
           {!gameState.isGameOver && (
-            <div className="shrink-0 space-y-3">
-              <div className="bg-gray-800/50 rounded-xl p-3 text-center">
-                <p className="text-xs text-gray-400">Giliran</p>
-                <p className="text-base font-bold">
+            <div className="shrink-0 space-y-4">
+              <p className="text-center text-sm" style={{ color: "#7D766A" }}>
+                Giliran{" "}
+                <span className="font-bold" style={{ color: "#2C2416" }}>
                   {gameState.currentPlayer.name}
-                  {gameState.currentPlayer.isBot && (
-                    <span className="text-xs ml-2 bg-gray-700 px-2 py-0.5 rounded-full">
-                      BOT
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div className="bg-gray-800/50 rounded-xl p-3 flex justify-center">
-                <Dice
-                  value={diceValue}
-                  rolling={rolling}
-                  onRoll={handleRoll}
-                  disabled={!canRoll}
-                />
-              </div>
+                </span>
+                {gameState.currentPlayer.isBot && (
+                  <span
+                    className="ml-2 text-xs px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: "#E8E2D6", color: "#7D766A" }}
+                  >
+                    BOT
+                  </span>
+                )}
+              </p>
+              <Dice
+                value={diceValue}
+                rolling={rolling}
+                onRoll={handleRoll}
+                disabled={!canRoll}
+              />
             </div>
           )}
 
-          {/* Movable Pieces Selection */}
-          {phase === "choosing" && movablePieces.length > 0 && (
+          {/* All Pieces List */}
+          {!gameState.isGameOver && (
             <MovablePiecesList
-              pieces={movablePieces}
-              selectedPieceId={selectedPieceId}
-              onSelect={setSelectedPieceId}
-              onConfirm={() => handleMovePiece()}
+              allPieces={gameState.pieces[gameState.currentPlayer.color] ?? []}
+              movablePieces={phase === "choosing" ? movablePieces : []}
+              diceValue={phase === "choosing" ? diceValue : null}
+              onSelect={(id) => handleMovePiece(id)}
             />
           )}
 
           {/* Bot Turn Indicator */}
           {phase === "bot-turn" && (
-            <div className="bg-gray-800/50 rounded-xl p-3 text-center shrink-0">
-              <p className="text-gray-400 animate-pulse">
+            <div className="rounded-xl p-3 text-center shrink-0" style={{ backgroundColor: "#F5F0E6" }}>
+              <p className="animate-pulse" style={{ color: "#7D766A" }}>
                 🤖 Bot sedang berpikir...
               </p>
             </div>
@@ -386,12 +389,12 @@ export default function GamePage() {
 
           {/* Error */}
           {error && (
-            <p className="text-red-400 text-sm text-center shrink-0">{error}</p>
+            <p className="text-red-600 text-sm text-center shrink-0">{error}</p>
           )}
 
           {/* Game Log - fills remaining space */}
           <div className="flex-1 min-h-[100px]">
-            <GameLog messages={log} />
+            <GameLog messages={log} players={gameState.players} />
           </div>
         </div>
       </div>
