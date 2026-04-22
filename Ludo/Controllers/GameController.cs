@@ -194,9 +194,12 @@ public class GameController : IGameController
         }
     }
 
+    private static readonly HashSet<int> SafeTiles =
+        [..StartOffsets.Values, 8, 21, 34, 47];  // 8/21/34/47 = gray rosette squares (+8 from each start)
+
     private bool IsSafeTile(int globalPosition)
     {
-        return StartOffsets.ContainsValue(globalPosition);
+        return SafeTiles.Contains(globalPosition);
     }
 
     private int GetGlobalTrackPosition(PlayerColor color, int step)
