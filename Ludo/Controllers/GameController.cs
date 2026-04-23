@@ -59,8 +59,6 @@ public class GameController : IGameController
         }
     }
 
-    public IBoard GetBoard() => _board;
-    public IDice GetDice() => _dice;
     public IPlayer GetCurrentPlayer() => _players[_currentPlayerIndex];
     public IList<IPlayer> GetPlayers() => _players;
     public IDictionary<PlayerColor, IList<IPiece>> GetAllPieces() => _pieces;
@@ -93,10 +91,29 @@ public class GameController : IGameController
 
     public IPiece ChoosePiece(IList<IPiece> movablePieces)
     {
-        return movablePieces[0];
+        if (_players[_currentPlayerIndex].IsBot)
+            return BotChoosePiece(movablePieces);
+
+        if (movablePieces.Count == 1)
+        {
+            Console.WriteLine($"  Otomatis memilih Pion {movablePieces[0].Id}");
+            return movablePieces[0];
+        }
+
+        int choice = 0;
+        while (choice < 1 || choice > movablePieces.Count)
+        {
+            Console.Write($"  Pilih pion (1-{movablePieces.Count}): ");
+            if (!int.TryParse(Console.ReadLine(), out choice) || choice < 1 || choice > movablePieces.Count)
+            {
+                Console.WriteLine("  Pilihan tidak valid.");
+                choice = 0;
+            }
+        }
+        return movablePieces[choice - 1];
     }
 
-    public IPiece BotChoosePiece(IList<IPiece> movablePieces)
+    private IPiece BotChoosePiece(IList<IPiece> movablePieces)
     {
         // Prioritas: 1) Capture musuh, 2) Keluar dari base, 3) Pion paling depan
         var player = _players[_currentPlayerIndex];
@@ -232,10 +249,6 @@ public class GameController : IGameController
         return _pieces[player.Color].All(p => p.State == PieceState.Finished);
     }
 
-    public ITile GetTileFromBoard(Position targetPos)
-    {
-        return _board.Grid[targetPos.X][targetPos.Y];
-    }
 
     public void NextTurn()
     {

@@ -149,7 +149,7 @@ public class GameService : IGameService
             ));
         }
 
-        var chosen = controller.BotChoosePiece(movablePieces);
+        var chosen = controller.ChoosePiece(movablePieces);
         var prevState = chosen.State;
 
         controller.MovePiece(currentPlayer, chosen, roll);

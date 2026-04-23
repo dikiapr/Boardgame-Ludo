@@ -183,32 +183,12 @@ while (!controller.IsGameOver)
     }
 
     // Choose piece
-    IPiece chosen;
+    IPiece chosen = controller.ChoosePiece(movablePieces);
     if (isBot)
     {
-        chosen = controller.BotChoosePiece(movablePieces);
         Console.ForegroundColor = ConsoleColor.Magenta;
         Console.WriteLine($"  Bot memilih Pion {chosen.Id}");
         Console.ResetColor();
-    }
-    else if (movablePieces.Count == 1)
-    {
-        chosen = movablePieces[0];
-        Console.WriteLine($"  Otomatis memilih Pion {chosen.Id}");
-    }
-    else
-    {
-        int choice = 0;
-        while (choice < 1 || choice > movablePieces.Count)
-        {
-            Console.Write($"  Pilih pion (1-{movablePieces.Count}): ");
-            if (!int.TryParse(Console.ReadLine(), out choice) || choice < 1 || choice > movablePieces.Count)
-            {
-                Console.WriteLine("  Pilihan tidak valid.");
-                choice = 0;
-            }
-        }
-        chosen = movablePieces[choice - 1];
     }
 
     var prevState = chosen.State;
