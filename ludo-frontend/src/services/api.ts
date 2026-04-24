@@ -50,7 +50,7 @@ export const gameApi = {
     return request(`/api/game/${gameId}/bot-move`, { method: "POST" });
   },
 
-  deleteGame(gameId: string): Promise<void> {
-    return request(`/api/game/${gameId}`, { method: "DELETE" });
-  },
+  // deleteGame(gameId: string): Promise<void> {
+  //   return request(`/api/game/${gameId}`, { method: "DELETE" });
+  // },
 };

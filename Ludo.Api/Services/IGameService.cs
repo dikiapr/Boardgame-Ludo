@@ -11,5 +11,5 @@ public interface IGameService
     OperationResult<RollDiceResponse> RollDice(string gameId);
     OperationResult<MovePieceResponse> MovePiece(string gameId, MovePieceRequest request);
     OperationResult<MovePieceResponse> BotMove(string gameId);
-    OperationResult<bool> DeleteGame(string gameId);
+    // OperationResult<bool> DeleteGame(string gameId);
 }

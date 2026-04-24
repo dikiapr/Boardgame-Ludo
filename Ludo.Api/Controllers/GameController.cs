@@ -37,13 +37,13 @@ public class GameController : ControllerBase
     public ActionResult<MovePieceResponse> BotMove(string gameId)
         => _gameService.BotMove(gameId).ToActionResult();
 
-    [HttpDelete("{gameId}")]
-    public IActionResult DeleteGame(string gameId)
-    {
-        var result = _gameService.DeleteGame(gameId);
-        if (!result.IsSuccess)
-            return NotFound(result.Error);
-
-        return Ok(new { message = "Game dihapus." });
-    }
+    // [HttpDelete("{gameId}")]
+    // public IActionResult DeleteGame(string gameId)
+    // {
+    //     var result = _gameService.DeleteGame(gameId);
+    //     if (!result.IsSuccess)
+    //         return NotFound(result.Error);
+    //
+    //     return Ok(new { message = "Game dihapus." });
+    // }
 }

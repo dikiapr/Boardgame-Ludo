@@ -169,13 +169,13 @@ public class GameService : IGameService
         ));
     }
 
-    public OperationResult<bool> DeleteGame(string gameId)
-    {
-        if (!_sessionManager.RemoveSession(gameId))
-            return OperationResult<bool>.NotFound("Game tidak ditemukan.");
-
-        return OperationResult<bool>.Ok(true);
-    }
+    // public OperationResult<bool> DeleteGame(string gameId)
+    // {
+    //     if (!_sessionManager.RemoveSession(gameId))
+    //         return OperationResult<bool>.NotFound("Game tidak ditemukan.");
+    //
+    //     return OperationResult<bool>.Ok(true);
+    // }
 
     private static MovablePieceResponse BuildMovablePieceResponse(IPiece piece, int roll)
     {
